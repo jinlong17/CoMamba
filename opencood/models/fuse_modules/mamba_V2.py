@@ -1570,7 +1570,6 @@ class CoVSSBlock(nn.Module):
         return x
 
 
-
 ####------------------------->
 
 class MambaFusionEncoder(nn.Module):
@@ -1689,12 +1688,6 @@ class MambaFusionEncoder(nn.Module):
             ) ############## V1       
 
 
-        # self.cov_fused = nn.Sequential(
-        #         nn.Conv2d(in_channels=512, out_channels=256, kernel_size=1),
-        #         nn.BatchNorm2d(256,eps=1e-5, momentum=0.01, affine=True),
-        #         nn.ReLU()
-        #     ) ############## V2              
-
 
 
         #######TODO:
@@ -1730,15 +1723,8 @@ class MambaFusionEncoder(nn.Module):
             Reduce('b n c h w -> b c h w', 'mean')
         )
             
-        #     self.fusion_m = nn.Sequential(
-        #     # Reduce('b m d h w -> b d h w', 'mean'),
-        #     Rearrange('b d h w -> b h w d'),
-        #     nn.LayerNorm(input_dim),
-        #     nn.Linear(input_dim, input_dim),
-        #     Rearrange('b h w d -> b d h w')
-        # )
-        
 
+        
     
     def vss_upsample(self, x):
         """
@@ -1816,14 +1802,9 @@ class MambaFusionEncoder(nn.Module):
 
         fusion_feature = self.cov_fused(medium_feature+normal_feature) ############## V1
 
-            # fusion_feature = torch.cat((normal_feature, medium_feature), dim=1)
-            # fusion_feature = self.cov_fused(fusion_feature)
-
-
 
         return self.mlp_head(fusion_feature)
     
-
 
 
 
@@ -1836,23 +1817,22 @@ if __name__ == "__main__":
 
     block = CoVSSBlock(hidden_dim=256, patch_size=1).cuda()
     H=48*176
-    input_tensor = torch.randn(1, 256, 5, H).cuda()  # 假设输入是一个小批量的特征图
+    input_tensor = torch.randn(1, 256, 5, H).cuda()  #
     start_time = time.time()
     output = block(input_tensor)
     end_time = time.time()
 
 
-    # print(" 1    输出尺寸:", output.size())
     print('N H*W time  ', str(end_time -start_time))
 
     
-    input_tensor = torch.randn(H, 256, 5, 1).cuda()  # 假设输入是一个小批量的特征图
+    input_tensor = torch.randn(H, 256, 5, 1).cuda() 
     start_time1 = time.time()
     output = block(input_tensor)
     end_time1 = time.time()
 
 
-    # print(" 1    输出尺寸:", output.size())
+
     print('N 1 time  ', str(end_time1 -start_time1))
 
 

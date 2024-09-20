@@ -54,9 +54,9 @@ class ScaledDotProductAttention(nn.Module):
 
 import pdb
 
-class AttFusion(nn.Module):
+class MambaFusion(nn.Module):
     def __init__(self, feature_dim):
-        super(AttFusion, self).__init__()
+        super(MambaFusion, self).__init__()
         # self.att = ScaledDotProductAttention(feature_dim)
 
         self.vss = CoVSSBlock(in_chans=256,hidden_dim=256,patch_size=1)
@@ -82,36 +82,7 @@ class AttFusion(nn.Module):
 
             cav_num = xx.shape[0]
 
-
-            #------> 1   N, H*W      aba_baseline
-            # xx = xx.view(cav_num, C, -1).permute(1, 0, 2)
-            # xx = xx.unsqueeze(0)
-            # h = xx.squeeze(0)
-            # fused = h.permute(1, 0, 2).view(cav_num, C, W, H)
-            # fused = fused.mean(dim=0)
-
-
-
-            #------> 1   N, H*W     aba_mamba_only 
-            # xx = xx.view(cav_num, C, -1).permute(1, 0, 2)
-            # xx = xx.unsqueeze(0)
-            # xx = self.vss(xx)
-            # xx = self.process(xx)
-            # h = xx.squeeze(0)
-            # fused = h.permute(1, 0, 2).view(cav_num, C, W, H)[0, ...]
-
-
-
-            #------> 1   N, H*W      aba_max_mean_only 
-            # xx = xx.view(cav_num, C, -1).permute(1, 0, 2)
-            # xx = xx.unsqueeze(0)
-            # h = xx.squeeze(0)
-            # xx = h.permute(1, 0, 2).view(cav_num, C, W, H).contiguous()
-            # fused = self.fusion_max(xx) + self.fusion_mean(xx)
-
-
-
-            #------> 2   N, H*W  mamba_mean_max
+            #------>   N, H*W  mamba_mean_max
             xx = xx.view(cav_num, C, -1).permute(1, 0, 2)
             xx = xx.unsqueeze(0).contiguous()
             xx = self.vss(xx)
@@ -119,97 +90,6 @@ class AttFusion(nn.Module):
             h = xx.squeeze(0)
             xx = h.permute(1, 0, 2).view(cav_num, C, W, H).contiguous()
             fused = self.fusion_max(xx) + self.fusion_mean(xx)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            #------> try 2   N 1
-            # xx = xx.view(cav_num, C, -1).permute(2, 1, 0)
-            # # pdb.set_trace()
-            # xx = xx.unsqueeze(3)
-            # xx = self.vss(xx)
-            # xx = self.process(xx)
-            # xx = xx.squeeze(3) 
-            # # pdb.set_trace()
-            # fused = xx.permute(2, 1, 0).view(cav_num, C, W, H)[0, ...]
-
-
-
-            # #-------> try 3    max+mean  N 1
-            
-            # xx = xx.view(cav_num, C, -1).permute(2, 1, 0)
-            # xx = xx.unsqueeze(3)
-            # # print('1111111111111111', xx.shape)
-            # xx = self.vss(xx)
-            # xx = self.process(xx)
-            # xx = xx.squeeze(3) 
-            # xx = xx.permute(2, 1, 0).view(cav_num, C, W, H)
-            # fused = self.fusion_max(xx) + self.fusion_mean(xx)
-
-
-
-            # #--------------------------------------------------------------->  rf1     max+mean  N 1
-            
-            # xx = xx.view(cav_num, C, -1).permute(2, 1, 0).contiguous()
-            # xx = xx.unsqueeze(3).contiguous()
-            # # print('1111111111111111', xx.shape)
-            # xx = self.vss(xx)
-            # xx = self.process(xx)
-            # xx = xx.squeeze(3) 
-            # xx = xx.permute(2, 1, 0).view(cav_num, C, W, H).contiguous()
-            # fused = self.fusion_max(xx) + self.fusion_mean(xx)
-
-
-            #---------------------------------------------------------------> rf2    max+mean  N 1
-
-
-            # self.layer_norm_f = nn.LayerNorm([C, W, H]).cuda()
-            
-            # xx = xx.view(cav_num, C, -1).permute(2, 1, 0).contiguous()
-            # xx = xx.unsqueeze(3).contiguous()
-
-            # self.layer_norm = nn.LayerNorm([256, cav_num, 1]).cuda()
-            # # pdb.set_trace()
-            # # print('1111111111111111', xx.shape)
-            # xx = self.vss(xx)
-            # xx = self.process(xx)
-
-            # xx = self.layer_norm(xx)
-            # xx = xx.squeeze(3) 
-            # xx = xx.permute(2, 1, 0).view(cav_num, C, W, H).contiguous()
-            # xx = self.layer_norm_f(xx)
-            # fused = self.fusion_max(xx) + self.fusion_mean(xx)
-
-
-
-            #---------------------------------------------------------------> rf3    max+mean  N 1
-
-
-            # self.layer_norm = nn.LayerNorm([256, cav_num, 1]).cuda()
-            # xx = xx.view(cav_num, C, -1).permute(2, 1, 0)
-            # xx = xx.unsqueeze(3).contiguous()
-
-            # num_splits = 8
-            # sub_features = split_features(xx, num_splits)
-            # outputs = [self.vss(sub_feature) for sub_feature in sub_features]
-            # xx = torch.cat(outputs, dim=0)
-            # xx = self.process(xx)
-
-            # xx = self.layer_norm(xx)
-
-            # xx = xx.squeeze(3) 
-            # xx = xx.permute(2, 1, 0).view(cav_num, C, W, H).contiguous()
-            # fused = self.fusion_max(xx) + self.fusion_mean(xx)
 
 
             out.append(fused)

@@ -7,14 +7,10 @@ from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
 from opencood.models.sub_modules.base_bev_backbone import BaseBEVBackbone
 from opencood.models.sub_modules.downsample_conv import DownsampleConv
 from opencood.models.sub_modules.naive_compress import NaiveCompressor
-from opencood.models.fuse_modules.vss import AttFusion
+from opencood.models.fuse_modules.vss import MambaFusion
 
 
 ##########
-from opencood.models.fuse_modules.estimation_time import ModelAnalyzer
-import torch
-import time
-
 
 class PointPillarOPV2VComamba(nn.Module):
     def __init__(self, args):
@@ -39,7 +35,7 @@ class PointPillarOPV2VComamba(nn.Module):
             self.compression = True
             self.naive_compressor = NaiveCompressor(256, args['compression'])
 
-        self.fusion_net = AttFusion(256)
+        self.fusion_net = MambaFusion(256)
 
         self.cls_head = nn.Conv2d(128 * 2, args['anchor_number'],
                                   kernel_size=1)
@@ -49,17 +45,6 @@ class PointPillarOPV2VComamba(nn.Module):
         if args['backbone_fix']:
             self.backbone_fix()
 
-        ############################### estimation time
-        start_time = time.time()
-        # self.estimation_performace = True #True
-        self.estimation_performace = False
-        # self.Analyzer_fusion = ModelAnalyzer(self.fusion_net,flag=549,time_logger=True)
-        self.Analyzer_fusion = ModelAnalyzer(self.fusion_net,flag=50,time_logger=True)
-        self.iter = 0
-        import torch
-        self.start_time = []
-        self.end_time = []
-        ############################### estimation time
 
 
     def backbone_fix(self):
@@ -109,19 +94,10 @@ class PointPillarOPV2VComamba(nn.Module):
         batch_dict = self.backbone(batch_dict)
 
         spatial_features_2d = batch_dict['spatial_features_2d']
-        # import pdb
-        # pdb.set_trace()
 
-        # if spatial_features_2d.shape[0] ==4:
-
-        #     self.iter = self.iter + 1
-        #     print("Current CAVs are ", spatial_features_2d.shape[0], " total number are",  str(self.iter))
-
-        # else:
-        #     return
-        S =  4
-        start_idx = 5 - S
-        spatial_features_2d[start_idx:] = 0
+        # S =  4
+        # start_idx = 5 - S
+        # spatial_features_2d[start_idx:] = 0
 
 
         # downsample feature to reduce memory
@@ -131,18 +107,7 @@ class PointPillarOPV2VComamba(nn.Module):
         if self.compression:
             spatial_features_2d = self.naive_compressor(spatial_features_2d)
 
-        start_time = time.time()
         fused_feature = self.fusion_net(spatial_features_2d, record_len)
-        end_time = time.time()
-        
-        ########################estimation_time
-        # if self.estimation_performace:
-        #     self.iter = self.iter + 1
-        #     data = [spatial_features_2d,record_len]
-        #     self.start_time.append(start_time)
-        #     self.end_time.append(end_time)
-        #     self.Analyzer_fusion.analyze(data,self.iter,self.start_time,self.end_time)
-        ########################estimation_time
 
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)
