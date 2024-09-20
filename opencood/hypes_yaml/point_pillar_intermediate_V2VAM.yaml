@@ -1,12 +1,16 @@
-name: point_pillar_intermediate_V2VAM_nocompressionV2
-sub_name: 
-root_dir: "opv2v_data_dumping/train"
-validate_dir: "opv2v_data_dumping/validate"
+name: 8.V2X_V2VAM
+save_folder: "/home/jinlongli/1.Detection_Set/Comamba/5.Comamba2024"
+# root_dir: "opv2v_data_dumping/train"
+# validate_dir: "opv2v_data_dumping/validate"
+# root_dir: "/home/jinlongli/personal/DATASet/opv2v_data_dumping/train"
+# validate_dir: "/home/jinlongli/personal/DATASet/opv2v_data_dumping/test_culver_city" #validate
+root_dir: /home/jinlongli/personal/DATASet/V2X/train
+validate_dir: /home/jinlongli/personal/DATASet/V2X/test #validate
 
 yaml_parser: "load_point_pillar_params"
 train_params:
-  batch_size: &batch_size 4
-  epoches: 60
+  batch_size: &batch_size 8
+  epoches: &epoches 40
   eval_freq: 1
   save_freq: 1
   max_cav: &max_cav 5
@@ -66,6 +70,8 @@ model:
     max_cav: *max_cav
     compression: 0 #32 # compression rate
     backbone_fix: false
+    lc_noise: true
+    lc_noise_max: 29.5
 
     pillar_vfe:
       use_norm: true
@@ -101,8 +107,14 @@ optimizer:
     eps: 1e-10
     weight_decay: 1e-4
 
+# lr_scheduler:
+#   core_method: multistep #step, multistep and Exponential support
+#   gamma: 0.1
+#   step_size: [15,40,60]
 lr_scheduler:
-  core_method: multistep #step, multistep and Exponential support
-  gamma: 0.1
-  step_size: [15,40,60]
+    core_method: cosineannealwarm #step, multistep, Exponential and cosineannealwarm support
+    epoches: *epoches
+    warmup_lr: 2e-4  #2e-4
+    warmup_epoches: 10
+    lr_min: 2e-5  #2e-5
 

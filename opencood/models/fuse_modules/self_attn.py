@@ -43,6 +43,8 @@ class ScaledDotProductAttention(nn.Module):
         return context
 
 
+import pdb
+
 class AttFusion(nn.Module):
     def __init__(self, feature_dim):
         super(AttFusion, self).__init__()
@@ -51,8 +53,11 @@ class AttFusion(nn.Module):
     def forward(self, x, record_len):
         split_x = self.regroup(x, record_len)
         C, W, H = split_x[0].shape[1:]
+        # import pdb
+        # pdb.set_trace() 
         out = []
         for xx in split_x:
+            # pdb.set_trace()
             cav_num = xx.shape[0]
             xx = xx.view(cav_num, C, -1).permute(2, 0, 1)
             h = self.att(xx, xx, xx)
@@ -60,7 +65,41 @@ class AttFusion(nn.Module):
             out.append(h)
         return torch.stack(out)
 
-    def regroup(self, x, record_len):
+    def regroup(self,x, record_len):
+    # def regroup(self,input):
+        # x = input[0]
+        # record_len = input[1]
+        cum_sum_len = torch.cumsum(record_len, dim=0)
+        split_x = torch.tensor_split(x, cum_sum_len[:-1].cpu())
+        return split_x
+    
+
+class AttFusion_vit(nn.Module):
+    def __init__(self, feature_dim):
+        super(AttFusion_vit, self).__init__()
+        self.att = ScaledDotProductAttention(feature_dim)
+
+    def forward(self, x, record_len):
+        split_x = self.regroup(x, record_len)
+        C, W, H = split_x[0].shape[1:]
+        # import pdb
+        # pdb.set_trace() 
+        out = []
+        for xx in split_x:
+            # pdb.set_trace()
+            cav_num = xx.shape[0]
+            # xx = xx.view(C,-1,cav_num)
+            xx = xx.view(C,cav_num,-1)
+            # pdb.set_trace()
+            h = self.att(xx, xx, xx)
+            h = h.view(cav_num, C, W, H)[0, ...]
+            out.append(h)
+        return torch.stack(out)
+
+    def regroup(self,x, record_len):
+    # def regroup(self,input):
+        # x = input[0]
+        # record_len = input[1]
         cum_sum_len = torch.cumsum(record_len, dim=0)
         split_x = torch.tensor_split(x, cum_sum_len[:-1].cpu())
         return split_x

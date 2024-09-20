@@ -20,6 +20,12 @@ from opencood.visualization import vis_utils
 import matplotlib.pyplot as plt
 
 
+##########
+from opencood.models.fuse_modules.estimation_time import analyze
+import torch
+import time
+
+
 def test_parser():
     parser = argparse.ArgumentParser(description="synthetic data generation")
     parser.add_argument('--model_dir', type=str, required=True,
@@ -100,10 +106,40 @@ def main():
             vis_aabbs_gt.append(o3d.geometry.LineSet())
             vis_aabbs_pred.append(o3d.geometry.LineSet())
 
+    #-------------------------->
+    iter = 0
+    import time
+    num_runs = len(data_loader)
+    print(' the total number is ', num_runs)
+    start_time = time.time()
+
     for i, batch_data in tqdm(enumerate(data_loader)):
+
+        if batch_data['ego']['record_len'].item() ==5:
+
+            iter = iter + 1
+            print("Current CAVs are ", batch_data['ego']['record_len'].item(), " total number are",  str(iter))
+
+        
+        else:
+
+            continue
+
+        torch.cuda.synchronize()
         # print(i)
         with torch.no_grad():
+            # import pdb
+            # pdb.set_trace()
+            
             batch_data = train_utils.to_device(batch_data, device)
+            #----------------->
+            #FLOPs
+            # from torchprofile import profile_macs
+            # import pdb
+            # # pdb.set_trace()
+            # flops = profile_macs(model, batch_data['ego'])
+            # print(f"Estimated FLOPs: {flops / 1e9} GFLOPs")
+
             if opt.fusion_method == 'late':
                 pred_box_tensor, pred_score, gt_box_tensor = \
                     inference_utils.inference_late_fusion(batch_data,
@@ -196,6 +232,41 @@ def main():
                 vis.poll_events()
                 vis.update_renderer()
                 time.sleep(0.001)
+
+    #--------------------------->
+    end_time = time.time()
+    #FLOPs
+    # from torchprofile import profile_macs
+    # flops = profile_macs(model, batch_data['ego'])
+    # print(f"profile_macs Estimated FLOPs: {flops / 1e9} GFLOPs")
+
+
+    #
+    # from fvcore.nn import FlopCountAnalysis, parameter_count_table
+    # flops = FlopCountAnalysis(model, batch_data['ego'])
+    # print(f" fvcore.nn FLOPs: {flops.total()  / 1e9} GFLOPs")
+    # print('fvcore.nn the total parameter is ',parameter_count_table(model))
+
+
+    #########
+    # from thop import profile
+    # flops, params = profile(model, inputs=(batch_data['ego'],), verbose=True)
+    # print('')
+    # print(f"Total thop profile Estimated FLOPs: {flops / 1e9} GFLOPs")
+    # print(f"Total thop profile parameters: {str(params/1e6)}", 'M')
+    # print('')
+    # total_params = sum(p.numel() for p in model.parameters())
+    # memory_params = total_params / (1024 ** 2)
+    # print(f"Total memory for model parameters: {memory_params:.2f} MB")
+    # print('')
+
+  
+    ##############
+    # total_time = end_time - start_time
+    # analyze(model,batch_data['ego'], num_runs,total_time)
+    ###############
+
+
 
     eval_utils.eval_final_results(result_stat,
                                   opt.model_dir,

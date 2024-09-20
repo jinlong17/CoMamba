@@ -24,8 +24,11 @@ class STTF(nn.Module):
 
         T = get_transformation_matrix(
             dist_correction_matrix[:, 1:, :, :].reshape(-1, 2, 3), (H, W))
+        
         cav_features = warp_affine(x[:, 1:, :, :, :].reshape(-1, C, H, W), T,
-                                   (H, W))
+        (H, W))
+
+        # cav_features = x[:, 1:, :, :, :]
         cav_features = cav_features.reshape(B, -1, C, H, W)
         x = torch.cat([x[:, 0, :, :, :].unsqueeze(1), cav_features], dim=1)
         x = x.permute(0, 1, 3, 4, 2)

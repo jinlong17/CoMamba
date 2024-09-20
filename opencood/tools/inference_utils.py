@@ -69,7 +69,6 @@ def inference_early_fusion(batch_data, model, dataset):
 
     return pred_box_tensor, pred_score, gt_box_tensor
 
-
 def inference_intermediate_fusion(batch_data, model, dataset):
     """
     Model inference for early fusion.

@@ -25,6 +25,8 @@ def train_parser():
                         help='data generation yaml file needed ')
     parser.add_argument('--model_dir', default='',
                         help='Continued training path')
+    parser.add_argument('--model', default='',
+                        help='for fine-tuned training path')
     parser.add_argument("--half", action='store_true',
                         help="whether train with half precision.")
     parser.add_argument('--dist_url', default='env://',
@@ -80,6 +82,8 @@ def main():
     model = train_utils.create_model(hypes)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    print(hypes["name"], "is loaded!!!!")
+
     # if we want to train from last checkpoint.
     if opt.model_dir:
         saved_path = opt.model_dir
@@ -87,10 +91,29 @@ def main():
                                                          model)
 
     else:
-        init_epoch = 0
-        # if we train the model from scratch, we need to create a folder
-        # to save the model,
-        saved_path = train_utils.setup_train(hypes)
+
+        if opt.model:
+            saved_path = train_utils.setup_train(hypes)
+            '''
+            load the pretrained 3D detection model
+            '''
+            model_path = opt.model
+            init_epoch = 0
+            pretrained_state = torch.load(model_path)
+
+            # model.load_state_dict(pretrained_state['model_state_dict'])
+            #########
+            model_dict = model.state_dict()
+            pretrained_state = {k: v for k, v in pretrained_state.items() if (k in model_dict and v.shape == model_dict[k].shape)}
+            model_dict.update(pretrained_state)
+            model.load_state_dict(model_dict)
+            print('Loaded pretrained model from {}'.format(model_path))   
+
+        else:
+            init_epoch = 0
+            # if we train the model from scratch, we need to create a folder
+            # to save the model,
+            saved_path = train_utils.setup_train(hypes)
 
     # we assume gpu is necessary
     if torch.cuda.is_available():
@@ -115,6 +138,9 @@ def main():
 
     # record training
     writer = SummaryWriter(saved_path)
+
+    txt_path = os.path.join(saved_path, 'training_eval_log.txt')
+    txt_log = open(txt_path, "w")
 
     # half precision training
     if opt.half:
@@ -199,6 +225,8 @@ def main():
             print('At epoch %d, the validation loss is %f' % (epoch,
                                                               valid_ave_loss))
             writer.add_scalar('Validate_Loss', valid_ave_loss, epoch)
+
+            txt_log.write('At epoch ' + str(epoch+1)+',  the validation loss is '+ str(valid_ave_loss) + '  save in '+ str(os.path.join(saved_path,'net_epoch%d.pth' % (epoch + 1))) + '\n')
 
     print('Training Finished, checkpoints saved to %s' % saved_path)
 

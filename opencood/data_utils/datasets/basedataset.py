@@ -1,13 +1,9 @@
-# -*- coding: utf-8 -*-
-# Author: Runsheng Xu <rxx3386@ucla.edu>
-# License: TDG-Attribution-NonCommercial-NoDistrib
-
 """
-Basedataset class for all kinds of fusion.
+Basedataset class for lidar data pre-processing
 """
 
 import os
-import math
+import random
 from collections import OrderedDict
 
 import torch
@@ -18,14 +14,13 @@ import opencood.utils.pcd_utils as pcd_utils
 from opencood.data_utils.augmentor.data_augmentor import DataAugmentor
 from opencood.hypes_yaml.yaml_utils import load_yaml
 from opencood.utils.pcd_utils import downsample_lidar_minimum
-from opencood.utils.transformation_utils import x1_to_x2
+from opencood.utils.transformation_utils import x1_to_x2, dist_two_pose
 
 
 class BaseDataset(Dataset):
     """
-    Base dataset for all kinds of fusion. Mainly used to initialize the
-    database and associate the __get_item__ index with the correct timestamp
-    and scenario.
+    Base dataset for all kinds of fusion. Mainly used to assign correct
+    index.
 
     Parameters
     __________
@@ -33,8 +28,7 @@ class BaseDataset(Dataset):
         The dictionary contains all parameters for training/testing.
 
     visualize : false
-        If set to true, the raw point cloud will be saved in the memory
-        for visualization.
+        If set to true, the dataset is used for visualization.
 
     Attributes
     ----------
@@ -45,49 +39,35 @@ class BaseDataset(Dataset):
         The list to record each scenario's data length. This is used to
         retrieve the correct index during training.
 
-    pre_processor : opencood.pre_processor
-        Used to preprocess the raw data.
-
-    post_processor : opencood.post_processor
-        Used to generate training labels and convert the model outputs to
-        bbx formats.
-
-    data_augmentor : opencood.data_augmentor
-        Used to augment data.
-
     """
 
-    def __init__(self, params, visualize, train=True):
+    def __init__(self, params, visualize, train=True, isSim=False):
         self.params = params
         self.visualize = visualize
         self.train = train
+        self.isSim = isSim
 
         self.pre_processor = None
         self.post_processor = None
         self.data_augmentor = DataAugmentor(params['data_augment'],
                                             train)
-
-        # if the training/testing include noisy setting
         if 'wild_setting' in params:
             self.seed = params['wild_setting']['seed']
-            # whether to add time delay
             self.async_flag = params['wild_setting']['async']
             self.async_mode = \
                 'sim' if 'async_mode' not in params['wild_setting'] \
                     else params['wild_setting']['async_mode']
             self.async_overhead = params['wild_setting']['async_overhead']
 
-            # localization error
             self.loc_err_flag = params['wild_setting']['loc_err']
             self.xyz_noise_std = params['wild_setting']['xyz_std']
             self.ryp_noise_std = params['wild_setting']['ryp_std']
 
-            # transmission data size
             self.data_size = \
                 params['wild_setting']['data_size'] \
                     if 'data_size' in params['wild_setting'] else 0
             self.transmission_speed = \
-                params['wild_setting']['transmission_speed'] \
+                params['wild_setting']['transmission_speed']\
                     if 'transmission_speed' in params['wild_setting'] else 27
             self.backbone_delay = \
                 params['wild_setting']['backbone_delay'] \
@@ -95,43 +75,61 @@ class BaseDataset(Dataset):
 
         else:
             self.async_flag = False
-            self.async_overhead = 0  # ms
+            self.async_overhead = 0 # ms
             self.async_mode = 'sim'
             self.loc_err_flag = False
             self.xyz_noise_std = 0
             self.ryp_noise_std = 0
-            self.data_size = 0  # Mb (Megabits)
-            self.transmission_speed = 27  # Mbps
-            self.backbone_delay = 0  # ms
+            self.data_size = 0 # Mb
+            self.transmission_speed = 27 # Mbps
+            self.backbone_delay = 0 # ms
 
         if self.train:
             root_dir = params['root_dir']
         else:
             root_dir = params['validate_dir']
 
-        if 'train_params' not in params or\
-                'max_cav' not in params['train_params']:
+        if 'max_cav' not in params['train_params']:
             self.max_cav = 7
         else:
             self.max_cav = params['train_params']['max_cav']
 
         # first load all paths of different scenarios
-        scenario_folders = sorted([os.path.join(root_dir, x)
+        self.scenario_folders = sorted([os.path.join(root_dir, x)
                                    for x in os.listdir(root_dir) if
                                    os.path.isdir(os.path.join(root_dir, x))])
+        self.reinitialize()
+
+    def __len__(self):
+        return self.len_record[-1]
+
+    def __getitem__(self, idx):
+        """
+        Abstract method, needs to be define by the children class.
+        """
+        pass
+
+    def reinitialize(self):
         # Structure: {scenario_id : {cav_1 : {timestamp1 : {yaml: path,
         # lidar: path, cameras:list of path}}}}
         self.scenario_database = OrderedDict()
         self.len_record = []
 
         # loop over all scenarios
-        for (i, scenario_folder) in enumerate(scenario_folders):
+        for (i, scenario_folder) in enumerate(self.scenario_folders):
             self.scenario_database.update({i: OrderedDict()})
 
             # at least 1 cav should show up
-            cav_list = sorted([x for x in os.listdir(scenario_folder)
-                               if os.path.isdir(
-                    os.path.join(scenario_folder, x))])
+            # at least 1 cav should show up
+            if self.train:
+                cav_list = [x for x in os.listdir(scenario_folder)
+                            if os.path.isdir(
+                        os.path.join(scenario_folder, x))]
+                random.shuffle(cav_list)
+            else:
+                cav_list = sorted([x for x in os.listdir(scenario_folder)
+                                   if os.path.isdir(
+                        os.path.join(scenario_folder, x))])
             assert len(cav_list) > 0
 
             # roadside unit data's id is always negative, so here we want to
@@ -151,10 +149,13 @@ class BaseDataset(Dataset):
                 cav_path = os.path.join(scenario_folder, cav_id)
 
                 # use the frame number as key, the full path as the values
+                # todo: hardcoded to remove additional yamls. no need to worry
+                # about this for users.
                 yaml_files = \
                     sorted([os.path.join(cav_path, x)
                             for x in os.listdir(cav_path) if
-                            x.endswith('.yaml') and 'additional' not in x])
+                            x.endswith('.yaml') and 'additional' \
+                            not in x and 'camera_gt' not in x])
                 timestamps = self.extract_timestamps(yaml_files)
 
                 for timestamp in timestamps:
@@ -177,7 +178,6 @@ class BaseDataset(Dataset):
                 # we only need to calculate for the first vehicle in the
                 # scene.
                 if j == 0:
-                    # we regard the agent with the minimum id as the ego
                     self.scenario_database[i][cav_id]['ego'] = True
                     if not self.len_record:
                         self.len_record.append(len(timestamps))
@@ -186,15 +186,6 @@ class BaseDataset(Dataset):
                         self.len_record.append(prev_last + len(timestamps))
                 else:
                     self.scenario_database[i][cav_id]['ego'] = False
-
-    def __len__(self):
-        return self.len_record[-1]
-
-    def __getitem__(self, idx):
-        """
-        Abstract method, needs to be define by the children class.
-        """
-        pass
 
     def retrieve_base_data(self, idx, cur_ego_pose_flag=True):
         """
@@ -207,9 +198,7 @@ class BaseDataset(Dataset):
 
         cur_ego_pose_flag : bool
             Indicate whether to use current timestamp ego pose to calculate
-            transformation matrix. If set to false, meaning when other cavs
-            project their LiDAR point cloud to ego, they are projecting to
-            past ego pose.
+            transformation matrix.
 
         Returns
         -------
@@ -231,7 +220,7 @@ class BaseDataset(Dataset):
         # retrieve the corresponding timestamp key
         timestamp_key = self.return_timestamp_key(scenario_database,
                                                   timestamp_index)
-        # calculate distance to ego for each cav
+        # calculate distance to ego for each cav for time delay estimation
         ego_cav_content = \
             self.calc_dist_to_ego(scenario_database, timestamp_key)
 
@@ -247,11 +236,13 @@ class BaseDataset(Dataset):
 
             if timestamp_index - timestamp_delay <= 0:
                 timestamp_delay = timestamp_index
+
             timestamp_index_delay = max(0, timestamp_index - timestamp_delay)
             timestamp_key_delay = self.return_timestamp_key(scenario_database,
                                                             timestamp_index_delay)
             # add time delay to vehicle parameters
             data[cav_id]['time_delay'] = timestamp_delay
+
             # load the corresponding data into the dictionary
             data[cav_id]['params'] = self.reform_param(cav_content,
                                                        ego_cav_content,
@@ -260,6 +251,10 @@ class BaseDataset(Dataset):
                                                        cur_ego_pose_flag)
             data[cav_id]['lidar_np'] = \
                 pcd_utils.pcd_to_np(cav_content[timestamp_key_delay]['lidar'])
+            data[cav_id]['folder_name'] = \
+                cav_content[timestamp_key_delay]['lidar'].split('/')[-3]
+            data[cav_id]['index'] = timestamp_index
+            data[cav_id]['cav_id'] = int(cav_id)
         return data
 
     @staticmethod
@@ -333,10 +328,7 @@ class BaseDataset(Dataset):
         for cav_id, cav_content in scenario_database.items():
             cur_lidar_pose = \
                 load_yaml(cav_content[timestamp_key]['yaml'])['lidar_pose']
-            distance = \
-                math.sqrt((cur_lidar_pose[0] -
-                           ego_lidar_pose[0]) ** 2 +
-                          (cur_lidar_pose[1] - ego_lidar_pose[1]) ** 2)
+            distance = dist_two_pose(cur_lidar_pose, ego_lidar_pose)
             cav_content['distance_to_ego'] = distance
             scenario_database.update({cav_id: cav_content})
 
@@ -361,17 +353,14 @@ class BaseDataset(Dataset):
             return 0
         # time delay real mode
         if self.async_mode == 'real':
-            # in the real mode, time delay = systematic async time + data
-            # transmission time + backbone computation time
+            # noise/time is in ms unit
             overhead_noise = np.random.uniform(0, self.async_overhead)
             tc = self.data_size / self.transmission_speed * 1000
             time_delay = int(overhead_noise + tc + self.backbone_delay)
         elif self.async_mode == 'sim':
-            # in the simulation mode, the time delay is constant
             time_delay = np.abs(self.async_overhead)
 
-        # the data is 10 hz for both opv2v and v2x-set
-        # todo: it may not be true for other dataset like DAIR-V2X and V2X-Sim
+        # todo: current 10hz, we may consider 20hz in the future
         time_delay = time_delay // 100
         return time_delay if self.async_flag else 0
 
@@ -390,7 +379,8 @@ class BaseDataset(Dataset):
         ryp_std : float
             std of the gaussian noise
         """
-        np.random.seed(self.seed)
+        if not self.train:
+            np.random.seed(self.seed)
         xyz_noise = np.random.normal(0, xyz_std, 3)
         ryp_std = np.random.normal(0, ryp_std, 3)
         noise_pose = [pose[0] + xyz_noise[0],
@@ -405,7 +395,7 @@ class BaseDataset(Dataset):
                      timestamp_delay, cur_ego_pose_flag):
         """
         Reform the data params with current timestamp object groundtruth and
-        delay timestamp LiDAR pose for other CAVs.
+        delay timestamp LiDAR pose.
 
         Parameters
         ----------
@@ -523,24 +513,16 @@ class BaseDataset(Dataset):
         """
         return self.pre_processor.project_points_to_bev_map(points, ratio)
 
-    def augment(self, lidar_np, object_bbx_center, object_bbx_mask):
+    def augment(self, lidar_np, object_bbx_center, object_bbx_mask,
+                flip=None, rotation=None, scale=None):
         """
-        Given the raw point cloud, augment by flipping and rotation.
-
-        Parameters
-        ----------
-        lidar_np : np.ndarray
-            (n, 4) shape
-
-        object_bbx_center : np.ndarray
-            (n, 7) shape to represent bbx's x, y, z, h, w, l, yaw
-
-        object_bbx_mask : np.ndarray
-            Indicate which elements in object_bbx_center are padded.
         """
         tmp_dict = {'lidar_np': lidar_np,
                     'object_bbx_center': object_bbx_center,
-                    'object_bbx_mask': object_bbx_mask}
+                    'object_bbx_mask': object_bbx_mask,
+                    'flip': flip,
+                    'noise_rotation': rotation,
+                    'noise_scale': scale}
         tmp_dict = self.data_augmentor.forward(tmp_dict)
 
         lidar_np = tmp_dict['lidar_np']
@@ -552,7 +534,7 @@ class BaseDataset(Dataset):
     def collate_batch_train(self, batch):
         """
         Customized collate function for pytorch dataloader during training
-        for early and late fusion dataset.
+        for late fusion dataset.
 
         Parameters
         ----------
@@ -610,7 +592,6 @@ class BaseDataset(Dataset):
                          show_vis,
                          save_path,
                          dataset=None):
-        # visualize the model output
         self.post_processor.visualize(pred_box_tensor,
                                       gt_tensor,
                                       pcd,

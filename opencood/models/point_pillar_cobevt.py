@@ -12,6 +12,12 @@ from opencood.models.fuse_modules.swap_fusion_modules import \
 from opencood.models.fuse_modules.fuse_utils import regroup
 
 
+##########
+from opencood.models.fuse_modules.estimation_time import ModelAnalyzer
+import torch
+import time
+
+
 class PointPillarCoBEVT(nn.Module):
     def __init__(self, args):
         super(PointPillarCoBEVT, self).__init__()
@@ -44,6 +50,17 @@ class PointPillarCoBEVT(nn.Module):
 
         if args['backbone_fix']:
             self.backbone_fix()
+
+        ############################### estimation time
+        start_time = time.time()
+        self.estimation_performace = False
+        # self.Analyzer_fusion = ModelAnalyzer(self.fusion_net,flag=549,time_logger=True)
+        self.Analyzer_fusion = ModelAnalyzer(self.fusion_net,flag=50,time_logger=True)
+        self.iter = 0
+        import torch
+        self.start_time = []
+        self.end_time = []
+        ############################### estimation time
 
     def backbone_fix(self):
         """
@@ -95,17 +112,32 @@ class PointPillarCoBEVT(nn.Module):
         if self.compression:
             spatial_features_2d = self.naive_compressor(spatial_features_2d)
 
+
+        start_time = time.time()
         # N, C, H, W -> B,  L, C, H, W
         regroup_feature, mask = regroup(spatial_features_2d,
                                         record_len,
                                         self.max_cav)
+
+
         com_mask = mask.unsqueeze(1).unsqueeze(2).unsqueeze(3)
         com_mask = repeat(com_mask,
                           'b h w c l -> b (h new_h) (w new_w) c l',
                           new_h=regroup_feature.shape[3],
                           new_w=regroup_feature.shape[4])
-
+        
         fused_feature = self.fusion_net(regroup_feature, com_mask)
+        end_time = time.time()
+
+
+        ########################estimation_time
+        if self.estimation_performace:
+            self.iter = self.iter + 1
+            data = [regroup_feature,com_mask]
+            self.start_time.append(start_time)
+            self.end_time.append(end_time)
+            self.Analyzer_fusion.analyze(data,self.iter,self.start_time,self.end_time)
+        ########################estimation_time
 
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)

@@ -1,25 +1,34 @@
-name: corpbevtlidar
-root_dir: 'v2xset/train'
-validate_dir: 'v2xset/validate'
+# name: corpbevtlidar
+# root_dir: 'v2xset/train'
+# validate_dir: 'v2xset/validate'
 
-wild_setting:
-  async: false
-  async_overhead: 100
-  seed: 20
-  loc_err: false
-  xyz_std: 0.2
-  ryp_std: 0.2
-  data_size: 1.06 # Mb!!
-  transmission_speed: 27 # Mbps!!
-  backbone_delay: 10 # ms
+name: 6.Cobevt_V2XSet #6.opv2v_mamba_max_mean_v2v4real #5.testing_opv2v_mamba_N_1_max_mean_continous_rf1  #4.opv2v_mamba_N_1_max_mean #4.opv2v_mamba_N_1_CrossScan_Ab_1direction #4.opv2v_mamba_N_1_max_mean_CrossScan_Ab_1direction
+save_folder: "/home/jinlongli/1.Detection_Set/Comamba/5.Comamba2024"
+# root_dir: "opv2v_data_dumping/train"
+# validate_dir: "opv2v_data_dumping/validate"
+
+root_dir: /home/jinlongli/personal/DATASet/V2X/train
+validate_dir: /home/jinlongli/personal/DATASet/V2X/test #validate
+# validate_dir: "/home/jinlongli/personal/DATASet/V2X/validate"
+
+# wild_setting:
+#   async: false
+#   async_overhead: 100
+#   seed: 20
+#   loc_err: false
+#   xyz_std: 0.2
+#   ryp_std: 0.2
+#   data_size: 1.06 # Mb!!
+#   transmission_speed: 27 # Mbps!!
+#   backbone_delay: 10 # ms
 
 yaml_parser: "load_point_pillar_params"
 train_params:
-  batch_size: &batch_size 4
-  epoches: &epoches 90
-  eval_freq: 2
+  batch_size: &batch_size 6
+  epoches: &epoches 40
+  eval_freq: 1
   save_freq: 1
-  max_cav: &max_cav 5
+  max_cav: &max_cav 15
 
 fusion:
   core_method: 'IntermediateFusionDataset' # LateFusionDataset, EarlyFusionDataset, IntermediateFusionDataset supported

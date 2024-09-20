@@ -15,6 +15,102 @@ import torch
 import torch.optim as optim
 import timm
 
+
+
+def load_saved_model_with_LCRN(saved_path, model):
+    """
+    Load saved model if exiseted
+
+    Parameters
+    __________
+    saved_path : str
+       model saved path
+    model : opencood object
+        The model instance.
+
+    Returns
+    -------
+    model : opencood object
+        The model instance loaded pretrained params.
+    """
+    assert os.path.exists(saved_path), '{} not found'.format(saved_path)
+
+    def findLastCheckpoint(save_dir):
+        file_list = glob.glob(os.path.join(save_dir, '*epoch*.pth'))
+        if file_list:
+            epochs_exist = []
+            for file_ in file_list:
+                result = re.findall(".*epoch(.*).pth.*", file_)
+                epochs_exist.append(int(result[0]))
+            initial_epoch_ = max(epochs_exist)
+        else:
+            initial_epoch_ = 0
+        return initial_epoch_
+
+    initial_epoch = findLastCheckpoint(saved_path)
+    if initial_epoch > 0:
+        print('resuming by loading epoch %d' % initial_epoch)
+        # model.load_state_dict(torch.load(
+        #     os.path.join(saved_path,
+        #                  'net_epoch%d.pth' % initial_epoch)), strict=False)
+        checkpoint = torch.load(os.path.join(saved_path,
+                         'net_epoch%d.pth' % initial_epoch))
+        model.load_state_dict(checkpoint['model_state_dict'])
+        print("loaded the backbone model, LCRN, and fusion module!" )
+
+
+    return initial_epoch, model
+
+
+
+# def load_saved_model_with_LCRN(saved_path, model):
+#     """
+#     Load saved model if exiseted
+
+#     Parameters
+#     __________
+#     saved_path : str
+#        model saved path
+#     model : opencood object
+#         The model instance.
+
+#     Returns
+#     -------
+#     model : opencood object
+#         The model instance loaded pretrained params.
+#     """
+#     assert os.path.exists(saved_path), '{} not found'.format(saved_path)
+
+#     def findLastCheckpoint(save_dir):
+#         file_list = glob.glob(os.path.join(save_dir, '*epoch*.pth'))
+#         if file_list:
+#             epochs_exist = []
+#             for file_ in file_list:
+#                 result = re.findall(".*epoch(.*).pth.*", file_)
+#                 epochs_exist.append(int(result[0]))
+#             initial_epoch_ = max(epochs_exist)
+#         else:
+#             initial_epoch_ = 0
+#         return initial_epoch_
+
+#     initial_epoch = findLastCheckpoint(saved_path)
+#     if initial_epoch > 0:
+#         print('resuming by loading epoch %d' % initial_epoch)
+#         # model.load_state_dict(torch.load(
+#         #     os.path.join(saved_path,
+#         #                  'net_epoch%d.pth' % initial_epoch)), strict=False)
+#         checkpoint = torch.load(os.path.join(saved_path,
+#                          'net_epoch%d.pth' % initial_epoch))
+#         model[0].load_state_dict(checkpoint['model_state_dict'])
+#         model[1].load_state_dict(checkpoint['LCRN_state_dict'])
+#         model[2].load_state_dict(checkpoint['fusion_state_dict'])
+#         print("loaded the backbone model, LCRN, and fusion module!" )
+
+
+#     return initial_epoch, model
+
+
+
 def load_saved_model(saved_path, model):
     """
     Load saved model if exiseted
@@ -79,8 +175,9 @@ def setup_train(hypes):
     folder_name = current_time.strftime("_%Y_%m_%d_%H_%M_%S")
     folder_name = model_name + folder_name
 
-    current_path = os.path.dirname(__file__)
-    current_path = os.path.join(current_path, '../logs')
+    # current_path = os.path.dirname(__file__)
+    # current_path = os.path.join(current_path, '../logs')
+    current_path = hypes['save_folder']
 
     full_path = os.path.join(current_path, folder_name)
 

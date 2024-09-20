@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+
+
+<!-- === Header Starts === -->
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="google-site-verification" content="JWOue1ZxNWRUMycXffn9ST4zeYFgqa01tDaUz4tDkAY" />
+  <title>LightDiff</title>
+
+  <link href="./assets/bootstrap.min.css" rel="stylesheet">
+  <link href="./assets/font.css" rel="stylesheet" type="text/css">
+  <link href="./assets/style.css" rel="stylesheet" type="text/css">
+</head>
+<!-- === Header Ends === -->
+
+
+<body>
+<!-- === Home Section Starts === -->
+<div class="section">
+  <!-- === Title Starts === -->
+  <div class="header">
+    <!-- <div class="logo">
+      <a href="https://genforce.github.io/" target="_blank"><img src="./assets/genforce.png"></a>
+    </div> -->
+    <div class="title", style="padding-top: 10pt;">  <!-- Set padding as 10 if title is with two lines. -->
+      <b>Light the Night</b>: A Multi-Condition Diffusion Framework for Unpaired Low-Light Enhancement in Autonomous Driving
+
+    </div>
+  </div>
+  <!-- === Title Ends === -->
+  <div class="author">
+    <a href="https://jinlong17.github.io/" target="_blank">Jinlong Li</a><sup>1</sup>*,&nbsp
+    <a href="" target="_blank">Baolu Li</a><sup>1</sup>*,&nbsp
+    <a href="" target="_blank">Zhengzhong Tu</a><sup>2</sup>,&nbsp
+    <a href="" target="_blank">Xinyu Liu</a><sup>1</sup>,&nbsp
+    <a href="#" target="_blank">Qing Guo</a><sup>3</sup>,&nbsp
+    <a href="" target="_blank">Felix Juefei-Xu</a><sup>4</sup>,&nbsp
+    <a href="https://derrickxunu.github.io/" target="_blank">Runsheng Xu</a><sup>5</sup>
+    <a href="https://scholar.google.com/citations?user=JnQts0kAAAAJ&hl=en" target="_blank">Hongkai Yu</a><sup>1</sup>
+  </div>
+  <div class="institution">
+    <sup>1</sup> Cleveland State University,
+    <sup>2</sup> University of Texas at Austin,
+    <sup>3</sup> A*STAR,
+    <sup>4</sup> New York University,
+    <sup>5</sup> UCLA
+  </div>
+
+  <div class="note">
+    * Equal contribution
+  </div>
+
+  <div class="link">
+    <b>CVPR 2024</b>&nbsp;
+    <a href="https://openaccess.thecvf.com/content/CVPR2024/papers/Li_Light_the_Night_A_Multi-Condition_Diffusion_Framework_for_Unpaired_Low-Light_CVPR_2024_paper.pdf" target="_blank">[Paper]</a>&nbsp;
+    <a href="https://github.com/jinlong17/LightDiff" target="_blank">[Code]</a>
+  </div>
+  <div class="teaser">
+    <img src="assets/cvpr/vis_1.png">
+  </div>
+</div>
+<!-- === Home Section Ends === -->
+
+
+
+
+
+
+<!-- === Overview Section Starts === -->
+<div class="section">
+  <div class="title">Overview</div>
+  <div class="body">
+    <em>Without realistic paired day-night images, synthesizing dark driving images with vehicle lights is quite difficult, limiting the research in this field.</em>
+    This work introduces LightDiff, a domain-tailored framework designed to enhance the low-light image quality for autonomous driving applications, mitigating the challenges faced by vision-centric perception systems. By leveraging a dynamic data degradation process, a multi-condition  adapter for diverse input modalities, and perception-specific score guided reward modeling using reinforcement learning, LightDiff significantly enhances the image quality and 3D vehicle detection in nighttime on the nuScenes dataset. This innovation not only eliminates the need for extensive nighttime data but also ensures semantic integrity in image transformation, demonstrating its potential to enhance safety and reliability in autonomous driving scenarios. 
+
+    <table width="100%" style="margin: 20pt 0; text-align: center;">
+      <tr>
+        <td><img src="assets/cvpr/lightdiff.png" width="85%"></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="bodysmall">
+
+    The architecture of LightDiff. During the training stage, a Training Data Generation pipeline enables the acquisition of triple-modality data without any human-collected paired data. Our LightDiff employs a Multi-Condition Adapter to dynamically weight multiple conditions, coupled with LiDAR and Distribution Reward Modeling (LDRM), allowing for perception-oriented control.
+ 
+  </div>
+
+</div>
+<!-- === Overview Section Ends === -->
+
+
+<!-- === Result Section Starts === -->
+<div class="section">
+  <div class="title">Qualitative Results</div>
+  <div class="body">
+
+    Visual comparison on the example nighttime images in the nuScenes validation set.
+    <!-- Adjust the number of rows and columns (EVERY project differs). -->
+    <table width="100%" style="margin: 20pt 0; text-align: center;">
+      <tr>
+        <td><img src="./assets/cvpr/result1.png" width="80%"></td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- === Result Section Ends === -->
+
+
+
+
+
+<!-- === Result Section Starts === -->
+<div class="section">
+  <div class="title">Qualitative Results</div>
+  <div class="body">
+
+
+    Quantitative comparison of image quality on the nuScenes nighttime validation set
+    <table width="100%" style="margin: 20pt 0; text-align: center;">
+      <tr>
+        <td><img src="./assets/cvpr/Table1.png" width="90%"></td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- === Result Section Ends === -->
+
+
+
+<!-- === Result Section Starts === -->
+<div class="section">
+  <div class="title">Visualization of 3D detection results</div>
+  <div class="body">
+
+    We employ BEVDepth as the 3D detector and visualize both the front view of camera and the Bird's-Eye-View.
+    <!-- Adjust the number of rows and columns (EVERY project differs). -->
+    <table width="100%" style="margin: 20pt 0; text-align: center;">
+      <tr>
+        <td><img src="./assets/cvpr/det.png" width="85%"></td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- === Result Section Ends === -->
+
+
+
+
+<!-- === Reference Section Starts === -->
+<div class="section">
+  <div class="bibtex">BibTeX</div>
+<pre>
+  @inproceedings{li2024light,
+    title={Light the Night: A Multi-Condition Diffusion Framework for Unpaired Low-Light Enhancement in Autonomous Driving},
+    author={Li, Jinlong and Li, Baolu and Tu, Zhengzhong and Liu, Xinyu and Guo, Qing and Juefei-Xu, Felix and Xu, Runsheng and Yu, Hongkai},
+    booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+    pages={15205--15215},
+    year={2024}
+  }
+</pre>
+
+
+  <div class="ref">Related Work</div>
+  <div class="citation">
+    <div class="image"><img src="assets/controlnet.png"></div>
+    <div class="comment">
+      <a href="https://github.com/lllyasviel/ControlNet-v1-1-nightly" target="_blank">
+        Lvmin Zhang, Anyi Rao, Maneesh Agrawala.
+        Adding Conditional Control to Text-to-Image Diffusion Models.
+        ICCV 2023.</a><br>
+      <b>Comment:</b>
+      Builds a addition encoder to add spatial conditioning controls to T2I diffusion models.
+    </div>
+  </div>
+  <div class="citation">
+    <div class="image"><img src="assets/cvpr/degrading.png"></div>
+    <div class="comment">
+      <a href="https://openaccess.thecvf.com/content/ICCV2021/papers/Cui_Multitask_AET_With_Orthogonal_Tangent_Regularity_for_Dark_Object_Detection_ICCV_2021_paper.pdf" target="_blank">
+        Ziteng Cui, Guo-Jun Qi, Lin Gu, Shaodi You, Zenghui Zhang, Tatsuya Harada.
+        Multitask AET with orthogonal tangent regularity for dark object detection.
+        ICCV 2021.</a><br>
+      <b>Comment:</b>
+      Deploys Low-Illumination Degrading Transformations for Dark Object Detection.
+    </div> 
+  </div>
+</div>
+
+<!-- === Reference Section Ends === -->
+
+
+</body>
+</html>

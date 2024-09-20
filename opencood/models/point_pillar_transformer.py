@@ -10,6 +10,14 @@ from opencood.models.sub_modules.naive_compress import NaiveCompressor
 from opencood.models.fuse_modules.v2xvit_basic import V2XTransformer
 
 
+
+##########
+from opencood.models.fuse_modules.estimation_time import ModelAnalyzer1
+import torch
+import time
+
+
+
 class PointPillarTransformer(nn.Module):
     def __init__(self, args):
         super(PointPillarTransformer, self).__init__()
@@ -42,6 +50,17 @@ class PointPillarTransformer(nn.Module):
 
         if args['backbone_fix']:
             self.backbone_fix()
+
+        ############################### estimation time
+        self.estimation_performace = False
+        self.Analyzer_fusion = ModelAnalyzer1(self.fusion_net,flag=50,time_logger=True)
+        # self.Analyzer_fusion = ModelAnalyzer(self.fusion_net,flag=2169,time_logger=True)
+        self.iter = 0
+        import torch
+        self.start_time = []
+        self.end_time = []
+        ############################### estimation time
+
 
     def backbone_fix(self):
         """
@@ -96,6 +115,8 @@ class PointPillarTransformer(nn.Module):
         # compressor
         if self.compression:
             spatial_features_2d = self.naive_compressor(spatial_features_2d)
+
+        start_time = time.time()
         # N, C, H, W -> B,  L, C, H, W
         regroup_feature, mask = regroup(spatial_features_2d,
                                         record_len,
@@ -104,7 +125,9 @@ class PointPillarTransformer(nn.Module):
         prior_encoding = prior_encoding.repeat(1, 1, 1,
                                                regroup_feature.shape[3],
                                                regroup_feature.shape[4])
+
         regroup_feature = torch.cat([regroup_feature, prior_encoding], dim=2)
+
 
         # b l c h w -> b l h w c
         regroup_feature = regroup_feature.permute(0, 1, 3, 4, 2)
@@ -112,6 +135,20 @@ class PointPillarTransformer(nn.Module):
         fused_feature = self.fusion_net(regroup_feature, mask, spatial_correction_matrix)
         # b h w c -> b c h w
         fused_feature = fused_feature.permute(0, 3, 1, 2)
+
+
+        end_time = time.time()
+
+
+
+        ########################estimation_time
+        if self.estimation_performace:
+            self.iter = self.iter + 1
+            data = [regroup_feature,mask,spatial_correction_matrix]
+            self.start_time.append(start_time)
+            self.end_time.append(end_time)
+            self.Analyzer_fusion.analyze(data,self.iter,self.start_time,self.end_time)
+        ########################estimation_time
 
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)

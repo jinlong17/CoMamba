@@ -1,13 +1,9 @@
-# -*- coding: utf-8 -*-
-# Author: Runsheng Xu <rxx3386@ucla.edu>, Hao Xiang <haxiang@g.ucla.edu>,
-# License: TDG-Attribution-NonCommercial-NoDistrib
-
-
 """
 Transformation utils
 """
 
 import numpy as np
+import math
 
 
 def x_to_world(pose):
@@ -60,10 +56,12 @@ def x1_to_x2(x1, x2):
 
     Parameters
     ----------
-    x1 : list
-        The pose of x1 under world coordinates.
-    x2 : list
-        The pose of x2 under world coordinates.
+    x1 : list or np.ndarray
+        The pose of x1 under world coordinates or
+        transformation matrix x1->world
+    x2 : list or np.ndarray
+        The pose of x2 under world coordinates or
+         transformation matrix x2->world
 
     Returns
     -------
@@ -71,12 +69,40 @@ def x1_to_x2(x1, x2):
         The transformation matrix.
 
     """
-    x1_to_world = x_to_world(x1)
-    x2_to_world = x_to_world(x2)
-    world_to_x2 = np.linalg.inv(x2_to_world)
+    if isinstance(x1, list) and isinstance(x2, list):
+        x1_to_world = x_to_world(x1)
+        x2_to_world = x_to_world(x2)
+        world_to_x2 = np.linalg.inv(x2_to_world)
+        transformation_matrix = np.dot(world_to_x2, x1_to_world)
 
-    transformation_matrix = np.dot(world_to_x2, x1_to_world)
+    # object pose is list while lidar pose is transformation matrix
+    elif isinstance(x1, list) and not isinstance(x2, list):
+        x1_to_world = x_to_world(x1)
+        world_to_x2 = x2
+        transformation_matrix = np.dot(world_to_x2, x1_to_world)
+    # both are numpy matrix
+    else:
+        world_to_x2 = np.linalg.inv(x2)
+        transformation_matrix = np.dot(world_to_x2, x1)
+
     return transformation_matrix
+
+
+def dist_two_pose(cav_pose, ego_pose):
+    """
+    Calculate the distance between agent by given there pose.
+    """
+    if isinstance(cav_pose, list):
+        distance = \
+            math.sqrt((cav_pose[0] -
+                       ego_pose[0]) ** 2 +
+                      (cav_pose[1] - ego_pose[1]) ** 2)
+    else:
+        distance = \
+            math.sqrt((cav_pose[0, -1] -
+                       ego_pose[0, -1]) ** 2 +
+                      (cav_pose[1, -1] - ego_pose[1, -1]) ** 2)
+    return distance
 
 
 def dist_to_continuous(p_dist, displacement_dist, res, downsample_rate):

@@ -16,6 +16,8 @@ class PointPillarScatter(nn.Module):
             'voxel_coords']
         batch_spatial_features = []
         batch_size = coords[:, 0].max().int().item() + 1
+        # import pdb
+        # pdb.set_trace()
 
         for batch_idx in range(batch_size):
             spatial_feature = torch.zeros(

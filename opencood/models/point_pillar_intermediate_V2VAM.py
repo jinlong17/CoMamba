@@ -13,11 +13,10 @@ from opencood.models.sub_modules.naive_compress import NaiveCompressor
 from opencood.models.fuse_modules.V2VAM import V2V_AttFusion
 
 
-from opencood.models.sub_modules.noise import data_dropout, data_dropout_uniform,transmission_with_noise
+######
+from opencood.models.sub_modules.LC_noise  import regroup, data_dropout_uniform
 import numpy as np
 import torch
-from opencood.models.fuse_modules.self_attn import regroup
-import pdb
 
 class PointPillarintermediateV2VAM(nn.Module):
     """
@@ -55,6 +54,32 @@ class PointPillarintermediateV2VAM(nn.Module):
 
         if args['backbone_fix']:
             self.backbone_fix()
+
+        # self.noise = args['lc_noise']
+        # self.key_max = args['lc_noise_max']
+        self.noise = False
+        self.key_max = 29.5
+
+        if self.noise:
+
+            print("lossy communication is considered under V2V")
+
+    '''
+    add the noise for feature map
+    '''
+
+    def operation_noise(self, x, record_len):
+
+        split_x = regroup(x, record_len)
+        out = []
+        p = np.random.randint(0, 100)/100
+        for xx in split_x:
+            if xx.size()[0] > 1: # generating training noise without ego feature map
+                xx = data_dropout_uniform(xx, p=p, key_max=self.key_max)
+            out.append(xx)
+        
+        x = torch.cat(out, dim=0)
+        return x
 
     def backbone_fix(self):
         """
@@ -106,7 +131,19 @@ class PointPillarintermediateV2VAM(nn.Module):
         if self.compression:
             spatial_features_2d = self.naive_compressor(spatial_features_2d)
 
-        fused_feature = self.fusion_net(spatial_features_2d, record_len)
+
+
+        # print(' before noisy: ', torch.max(spatial_features_2d).item(), ' ' ,  torch.min(spatial_features_2d).item())
+        #add the LC noise
+        if self.noise:
+            spatial_features_2d_noise = self.operation_noise(spatial_features_2d.clone(), record_len)
+            fused_feature = self.fusion_net(spatial_features_2d_noise, record_len)
+
+        else:
+            fused_feature = self.fusion_net(spatial_features_2d, record_len)
+
+
+        # fused_feature = self.fusion_net(spatial_features_2d, record_len)
 
         # pdb.set_trace()
 

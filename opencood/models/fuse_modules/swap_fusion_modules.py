@@ -284,6 +284,7 @@ class SwapFusionEncoder(nn.Module):
     def forward(self, x, mask=None):
         for stage in self.layers:
             x = stage(x, mask=mask)
+
         return self.mlp_head(x)
 
 

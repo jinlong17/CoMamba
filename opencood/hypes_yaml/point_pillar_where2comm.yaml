@@ -1,24 +1,13 @@
-name: point_pillar_where2comm
-root_dir: '/data/opv2x/train'
-validate_dir: '/data/opv2x/validate'
+name: 6.opv2v_where2comm #7.v2v4real_opv2v_mamba_max_mean 
+save_folder: "/home/jinlongli/1.Detection_Set/Comamba/5.Comamba2024"
+root_dir: "/home/jinlongli/personal/DATASet/opv2v_data_dumping/train"
+validate_dir: "/home/jinlongli/personal/DATASet/opv2v_data_dumping/test_culver_city" #validate
 
-
-wild_setting:
-  seed: 20
-  async: False
-  async_mode: 'sim'
-  async_overhead: 100
-  loc_err: False
-  xyz_std: 0.2
-  ryp_std: 0.2
-  data_size: 1.06  # Mb
-  transmission_speed: 27  # Mbps
-  backbone_delay: 10  # ms
 
 yaml_parser: 'load_point_pillar_params'
 train_params:
-  batch_size: &batch_size 1
-  epoches: &epoches 50
+  batch_size: &batch_size 8
+  epoches: &epoches 40
   eval_freq: 1
   save_freq: 1
   max_cav: &max_cav 5

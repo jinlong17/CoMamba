@@ -6,7 +6,7 @@
 Transform points to voxels using sparse conv library
 """
 import sys
-
+import spconv.pytorch as spconv
 import numpy as np
 import torch
 from cumm import tensorview as tv

@@ -1,26 +1,33 @@
-name: point_pillar_v2xvit
-root_dir: 'v2xset/train'
-validate_dir: 'v2xset/validate'
+# name: point_pillar_v2xvit
+# root_dir: 'v2xset/train'
+# validate_dir: 'v2xset/validate'
+name: 6.V2X-ViT_V2XSet
+save_folder: "/home/jinlongli/1.Detection_Set/Comamba/5.Comamba2024"
 
-wild_setting:
-  async: false
-  async_mode: 'sim'
-  async_overhead: 100
-  seed: 25
-  loc_err: false
-  xyz_std: 0.2
-  ryp_std: 0.2
-  data_size: 1.06 # Mb!!
-  transmission_speed: 27 # Mbps!!
-  backbone_delay: 10 # ms
+
+root_dir: /home/jinlongli/personal/DATASet/V2X/train
+validate_dir: /home/jinlongli/personal/DATASet/V2X/test #validate
+# validate_dir: "/home/jinlongli/personal/DATASet/V2X/validate"
+
+# wild_setting:
+#   async: false
+#   async_mode: 'sim'
+#   async_overhead: 100
+#   seed: 25
+#   loc_err: false
+#   xyz_std: 0.2
+#   ryp_std: 0.2
+#   data_size: 1.06 # Mb!!
+#   transmission_speed: 27 # Mbps!!
+#   backbone_delay: 10 # ms
 
 yaml_parser: "load_point_pillar_params"
 train_params:
-  batch_size: &batch_size 2
-  epoches: 60
+  batch_size: &batch_size 4
+  epoches: 40
   eval_freq: 1
   save_freq: 1
-  max_cav: &max_cav 5
+  max_cav: &max_cav 15
 
 fusion:
   core_method: 'IntermediateFusionDataset' # LateFusionDataset, EarlyFusionDataset, IntermediateFusionDataset supported
@@ -111,7 +118,7 @@ model:
         num_blocks: 1
         # number of encoder layers
         depth: 3
-        use_roi_mask: true
+        use_roi_mask: False #true
         use_RTE: &use_RTE true
         RTE_ratio: &RTE_ratio 2 # 2 means the dt has 100ms interval while 1 means 50 ms interval
         # agent-wise attention
@@ -130,7 +137,7 @@ model:
           dim_head: [16, 32, 64]
           dropout: 0.3
           window_size: [4, 8, 16]
-          relative_pos_embedding: true
+          relative_pos_embedding: false #true
           fusion_method: 'split_attn'
         # feedforward condition
         feed_forward: &feed_forward
